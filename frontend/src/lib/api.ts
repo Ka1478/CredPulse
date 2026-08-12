@@ -9,14 +9,18 @@ import {
 } from './types';
 
 function getApiBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/+$/, '');
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (envUrl) {
+    const trimmed = envUrl.trim().replace(/\/+$/, '');
+    if (typeof window !== 'undefined' && (trimmed.includes('localhost') || trimmed.includes('127.0.0.1') || !trimmed.startsWith('http'))) {
+      return '/api/v1';
+    }
+    return trimmed;
   }
   return '/api/v1';
 }
 
 const API_BASE_URL = getApiBaseUrl();
-
 
 export async function fetchTransactions(filters: TransactionFilters): Promise<PaginatedTransactionsResponse> {
   const params = new URLSearchParams();

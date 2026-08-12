@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import { Pool } from 'pg';
+import transactionsData from '../data/transactions.json';
 
 export interface RawTransaction {
   id: string;
@@ -47,38 +47,38 @@ let userState = {
   user_email: 'priya@example.com'
 };
 
-let cachedTransactions: RawTransaction[] | null = null;
+const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.NEON_DATABASE_URL;
 
-function loadTransactions(): RawTransaction[] {
-  if (cachedTransactions) return cachedTransactions;
-
-  const jsonPath = path.join(process.cwd(), 'src', 'data', 'transactions.json');
-  if (!fs.existsSync(jsonPath)) {
-    return [];
+let pool: Pool | null = null;
+if (dbUrl && !dbUrl.includes('localhost') && !dbUrl.includes('127.0.0.1')) {
+  try {
+    pool = new Pool({
+      connectionString: dbUrl,
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 5000
+    });
+  } catch (err) {
+    console.warn('Failed to initialize Neon Postgres pool, falling back to embedded data:', err);
   }
-  const rawData = fs.readFileSync(jsonPath, 'utf8');
-  const parsed = JSON.parse(rawData);
-
-  cachedTransactions = (parsed as any[]).map(t => {
-    const cat = CATEGORIES.find(c => c.id === t.category_id) || CATEGORIES[0];
-    return {
-      ...t,
-      category_name: cat.name,
-      category_color: cat.color,
-      category_icon: cat.icon,
-      amount_inr: Number(t.amount_inr),
-      reward_coins_earned: Number(t.reward_coins_earned || Math.floor(t.amount_inr / 100))
-    };
-  });
-
-  return cachedTransactions;
 }
+
+const allTransactions: RawTransaction[] = (transactionsData as any[]).map(t => {
+  const cat = CATEGORIES.find(c => c.id === t.category_id) || CATEGORIES[0];
+  return {
+    ...t,
+    category_name: cat.name,
+    category_color: cat.color,
+    category_icon: cat.icon,
+    amount_inr: Number(t.amount_inr),
+    reward_coins_earned: Number(t.reward_coins_earned || Math.floor(t.amount_inr / 100))
+  };
+});
 
 export function getCategoriesData() {
   return CATEGORIES;
 }
 
-export function getTransactionsData(params: {
+export async function getTransactionsData(params: {
   page?: number;
   pageSize?: number;
   search?: string;
@@ -91,12 +91,95 @@ export function getTransactionsData(params: {
   sortBy?: string;
   sortOrder?: string;
 }) {
-  const allTransactions = loadTransactions();
   const page = Math.max(1, params.page || 1);
   const pageSize = Math.min(100, Math.max(1, params.pageSize || 20));
   const sortBy = params.sortBy || 'date';
   const sortOrder = params.sortOrder === 'asc' ? 'asc' : 'desc';
 
+  // Attempt Neon Postgres query if pool exists
+  if (pool) {
+    try {
+      let conditions: string[] = ['1=1'];
+      let queryParams: any[] = [];
+      let paramIdx = 1;
+
+      if (params.search) {
+        conditions.push(`(t.merchant_name ILIKE $${paramIdx} OR t.txn_ref ILIKE $${paramIdx} OR t.description ILIKE $${paramIdx})`);
+        queryParams.push(`%${params.search}%`);
+        paramIdx++;
+      }
+      if (params.categoryId && params.categoryId !== 'ALL') {
+        conditions.push(`t.category_id = $${paramIdx}`);
+        queryParams.push(params.categoryId);
+        paramIdx++;
+      }
+      if (params.status && params.status !== 'ALL') {
+        conditions.push(`t.status = $${paramIdx}`);
+        queryParams.push(params.status);
+        paramIdx++;
+      }
+      if (params.minAmount !== undefined && !isNaN(params.minAmount)) {
+        conditions.push(`t.amount_inr >= $${paramIdx}`);
+        queryParams.push(params.minAmount);
+        paramIdx++;
+      }
+      if (params.maxAmount !== undefined && !isNaN(params.maxAmount)) {
+        conditions.push(`t.amount_inr <= $${paramIdx}`);
+        queryParams.push(params.maxAmount);
+        paramIdx++;
+      }
+      if (params.startDate) {
+        conditions.push(`t.transaction_date >= $${paramIdx}`);
+        queryParams.push(params.startDate);
+        paramIdx++;
+      }
+      if (params.endDate) {
+        conditions.push(`t.transaction_date <= $${paramIdx}`);
+        queryParams.push(params.endDate + 'T23:59:59');
+        paramIdx++;
+      }
+
+      const whereClause = conditions.join(' AND ');
+      const countRes = await pool.query(`SELECT COUNT(*) as total, SUM(amount_inr) as sum_amt FROM transactions t WHERE ${whereClause}`, queryParams);
+
+      const totalCount = parseInt(countRes.rows[0]?.total || '0', 10);
+      const totalAmount = parseFloat(countRes.rows[0]?.sum_amt || '0');
+
+      let orderColumn = 't.transaction_date';
+      if (sortBy === 'amount') orderColumn = 't.amount_inr';
+      else if (sortBy === 'merchant') orderColumn = 't.merchant_name';
+
+      const offset = (page - 1) * pageSize;
+      const dataRes = await pool.query(
+        `SELECT t.id, t.user_id, t.txn_ref, t.merchant_name, t.category_id, c.name as category_name, c.color as category_color, c.icon as category_icon, t.amount_inr, t.status, t.transaction_date as date, t.payment_method, t.card_last4, t.reward_coins_earned, t.location, t.description
+         FROM transactions t
+         LEFT JOIN categories c ON t.category_id = c.id
+         WHERE ${whereClause}
+         ORDER BY ${orderColumn} ${sortOrder.toUpperCase()}
+         LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+        [...queryParams, pageSize, offset]
+      );
+
+      const items = dataRes.rows.map(row => ({
+        ...row,
+        amount_inr: parseFloat(row.amount_inr),
+        reward_coins_earned: parseInt(row.reward_coins_earned || '0', 10)
+      }));
+
+      return {
+        items,
+        total_count: totalCount,
+        page,
+        page_size: pageSize,
+        total_pages: Math.ceil(totalCount / pageSize) || 1,
+        total_amount_inr: Math.round(totalAmount * 100) / 100
+      };
+    } catch (dbErr) {
+      console.warn('Neon Postgres query error, falling back to embedded JSON data:', dbErr);
+    }
+  }
+
+  // Fallback to embedded 10,000 JSON transactions
   let filtered = allTransactions.filter(t => {
     if (params.search) {
       const q = params.search.toLowerCase();
@@ -154,7 +237,7 @@ export function getTransactionsData(params: {
   };
 }
 
-export function getAnalyticsSummaryData(params: {
+export async function getAnalyticsSummaryData(params: {
   search?: string;
   categoryId?: string;
   status?: string;
@@ -163,7 +246,7 @@ export function getAnalyticsSummaryData(params: {
   startDate?: string;
   endDate?: string;
 }) {
-  const result = getTransactionsData({ ...params, page: 1, pageSize: 10000 });
+  const result = await getTransactionsData({ ...params, page: 1, pageSize: 10000 });
   const filtered = result.items;
 
   const totalSpend = filtered.reduce((sum, t) => sum + t.amount_inr, 0);

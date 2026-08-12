@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const startDate = searchParams.get('start_date') || undefined;
   const endDate = searchParams.get('end_date') || undefined;
 
-  const data = getAnalyticsSummaryData({
+  const data = await getAnalyticsSummaryData({
     search,
     categoryId,
     status,

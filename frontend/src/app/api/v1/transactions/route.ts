@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   const sortBy = searchParams.get('sort_by') || 'date';
   const sortOrder = searchParams.get('sort_order') || 'desc';
 
-  const data = getTransactionsData({
+  const data = await getTransactionsData({
     page,
     pageSize,
     search,
