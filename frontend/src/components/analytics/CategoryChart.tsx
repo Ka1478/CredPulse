@@ -20,14 +20,23 @@ export const CategoryChart: React.FC<CategoryChartProps> = ({
     setIsMounted(true);
   }, []);
 
-  const chartData = data.map(item => ({
-    name: item.category_name,
-    value: item.total_amount_inr,
-    color: item.category_color,
-    id: item.category_id,
-    count: item.transaction_count,
-    percentage: item.percentage
-  }));
+  const totalFilteredAmount = data.reduce((sum, item) => sum + Number(item.total_amount_inr || 0), 0);
+
+  const chartData = data
+    .filter(item => Number(item.total_amount_inr || 0) > 0 || item.transaction_count > 0)
+    .sort((a, b) => Number(b.total_amount_inr || 0) - Number(a.total_amount_inr || 0))
+    .map(item => {
+      const val = Number(item.total_amount_inr || 0);
+      const pct = totalFilteredAmount > 0 ? Math.round((val / totalFilteredAmount) * 1000) / 10 : 0;
+      return {
+        name: item.category_name,
+        value: val,
+        color: item.category_color,
+        id: item.category_id,
+        count: item.transaction_count,
+        percentage: pct
+      };
+    });
 
   const handleSliceClick = (entry: any) => {
     if (entry && entry.id) {
@@ -69,18 +78,18 @@ export const CategoryChart: React.FC<CategoryChartProps> = ({
         )}
       </div>
 
-      <div style={{ width: '100%', height: '280px', minHeight: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '100%', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {!isMounted || chartData.length === 0 ? (
           <div style={{ textAlign: 'center', color: 'var(--cp-text-muted)', fontSize: '0.875rem' }}>
             No category spend data available
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={280} minHeight={280}>
-            <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={300} minHeight={300}>
+            <PieChart margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
               <Pie
                 data={chartData}
                 cx="50%"
-                cy="50%"
+                cy="45%"
                 innerRadius={55}
                 outerRadius={85}
                 paddingAngle={4}
@@ -112,9 +121,9 @@ export const CategoryChart: React.FC<CategoryChartProps> = ({
                       }}>
                         <div style={{ fontWeight: 700, color: item.color }}>{item.name}</div>
                         <div style={{ fontSize: '0.875rem', color: '#F9FAFB', marginTop: '4px' }}>
-                          ₹{item.value.toLocaleString('en-IN')} ({item.percentage}%)
+                          ₹{item.value.toLocaleString('en-IN')} — ({item.percentage}%)
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#9CA3AF', marginTop: '2px' }}>
                           {item.count} transactions
                         </div>
                       </div>
@@ -127,7 +136,16 @@ export const CategoryChart: React.FC<CategoryChartProps> = ({
                 layout="horizontal"
                 align="center"
                 verticalAlign="bottom"
-                wrapperStyle={{ fontSize: '0.75rem', paddingTop: '10px' }}
+                wrapperStyle={{ fontSize: '0.75rem', paddingTop: '16px' }}
+                formatter={(value, entry: any) => {
+                  const item = entry.payload;
+                  if (!item) return value;
+                  return (
+                    <span style={{ color: 'var(--cp-text-secondary)', fontSize: '0.75rem' }}>
+                      <strong style={{ color: item.color }}>{item.name}</strong> — ₹{item.value.toLocaleString('en-IN')} — <span style={{ fontWeight: 700, color: 'var(--cp-text-primary)' }}>{item.percentage}%</span>
+                    </span>
+                  );
+                }}
               />
             </PieChart>
           </ResponsiveContainer>
