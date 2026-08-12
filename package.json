@@ -6,19 +6,21 @@
     "frontend"
   ],
   "scripts": {
-    "dev": "npm run dev --prefix frontend",
-    "build": "npm run build --prefix frontend",
-    "start": "npm run start --prefix frontend"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
+    "lucide-react": "^1.31.0",
     "next": "16.3.0",
+    "pg": "^8.13.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "recharts": "^3.10.1",
-    "lucide-react": "^1.31.0"
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/pg": "^8.11.11",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "typescript": "^5"

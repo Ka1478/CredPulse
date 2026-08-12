@@ -1,0 +1,52 @@
+:root {
+  /* Color Tokens */
+  --cp-bg-dark: #0B0F19;
+  --cp-bg-surface: #111827;
+  --cp-bg-surface-elevated: #1F2937;
+  --cp-bg-glass: rgba(17, 24, 39, 0.75);
+  --cp-bg-glass-hover: rgba(31, 41, 55, 0.85);
+
+  --cp-border-subtle: rgba(255, 255, 255, 0.08);
+  --cp-border-default: rgba(255, 255, 255, 0.15);
+  --cp-border-focus: #6366F1;
+
+  --cp-text-primary: #F9FAFB;
+  --cp-text-secondary: #9CA3AF;
+  --cp-text-muted: #6B7280;
+
+  /* Accent Colors */
+  --cp-accent-primary: #6366F1;
+  --cp-accent-primary-hover: #4F46E5;
+  --cp-accent-secondary: #8B5CF6;
+  --cp-accent-gold: #F59E0B;
+  --cp-accent-emerald: #10B981;
+  --cp-accent-rose: #EF4444;
+
+  /* Status Colors */
+  --cp-status-success-bg: rgba(16, 185, 129, 0.15);
+  --cp-status-success-text: #34D399;
+  --cp-status-pending-bg: rgba(245, 158, 11, 0.15);
+  --cp-status-pending-text: #FBBF24;
+  --cp-status-failed-bg: rgba(239, 68, 68, 0.15);
+  --cp-status-failed-text: #F87171;
+
+  /* Typography */
+  --cp-font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --cp-font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+
+  /* Shadows */
+  --cp-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --cp-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --cp-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+  --cp-shadow-glow: 0 0 20px rgba(99, 102, 241, 0.25);
+
+  /* Radius */
+  --cp-radius-sm: 6px;
+  --cp-radius-md: 10px;
+  --cp-radius-lg: 16px;
+  --cp-radius-full: 9999px;
+
+  /* Transitions */
+  --cp-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --cp-transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
