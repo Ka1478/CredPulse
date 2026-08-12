@@ -41,7 +41,6 @@ export async function fetchCategories(): Promise<Category[]> {
 export async function fetchAnalyticsSummary(filters: TransactionFilters): Promise<AnalyticsSummaryResponse> {
   const params = new URLSearchParams();
   if (filters.search) params.set('search', filters.search);
-  if (filters.categoryId && filters.categoryId !== 'ALL') params.set('category_id', filters.categoryId);
   if (filters.status && filters.status !== 'ALL') params.set('status', filters.status);
   if (filters.minAmount !== undefined && !isNaN(filters.minAmount)) params.set('min_amount', filters.minAmount.toString());
   if (filters.maxAmount !== undefined && !isNaN(filters.maxAmount)) params.set('max_amount', filters.maxAmount.toString());
