@@ -192,7 +192,7 @@ export async function getTransactionsData(params: {
         };
       });
 
-      if (items.length > 0 || totalCount > 0) {
+      if (totalCount >= 1000) {
         return {
           items,
           total_count: totalCount,
