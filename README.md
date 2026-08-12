@@ -4,6 +4,14 @@ CredPulse is a full-stack financial dashboard web application for managing credi
 
 ---
 
+## Live Links
+
+- **GitHub Repository**: [https://github.com/Ka1478/CredPulse.git](https://github.com/Ka1478/CredPulse.git)
+- **Deployed Frontend (Vercel)**: [https://cred-pulse-frontend-ten.vercel.app/](https://cred-pulse-frontend-ten.vercel.app/)
+- **Deployed Backend API (Render)**: [https://credpulse-backend-te5q.onrender.com](https://credpulse-backend-te5q.onrender.com) (API Docs: [https://credpulse-backend-te5q.onrender.com/docs](https://credpulse-backend-te5q.onrender.com/docs))
+
+---
+
 ## Technical Stack
 
 - **Frontend**: React (TypeScript), Next.js (App Router), Vanilla CSS Design System (`tokens.css`), Recharts (Spend Analytics), Lucide Icons.
