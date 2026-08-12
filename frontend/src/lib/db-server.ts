@@ -1,4 +1,3 @@
-import { Pool } from 'pg';
 import { transactionsData } from '../data/transactions-dataset';
 
 export interface RawTransaction {
@@ -48,26 +47,16 @@ let userState = {
   user_email: 'priya@example.com'
 };
 
-const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.NEON_DATABASE_URL;
-
-let pool: Pool | null = null;
-if (dbUrl && !dbUrl.includes('localhost') && !dbUrl.includes('127.0.0.1')) {
-  try {
-    pool = new Pool({
-      connectionString: dbUrl,
-      ssl: { rejectUnauthorized: false },
-      connectionTimeoutMillis: 3000
-    });
-  } catch (err) {
-    console.warn('Neon Postgres init error:', err);
-  }
-}
-
 function getBaseTransactions(): RawTransaction[] {
   try {
     if (Array.isArray(transactionsData) && transactionsData.length > 0) {
       return (transactionsData as any[]).map(t => {
-        const cat = CATEGORIES.find(c => c.id === t.category_id || c.slug === t.category_id || c.name.toLowerCase() === (t.category || t.category_name || '').toLowerCase()) || CATEGORIES[0];
+        const cat = CATEGORIES.find(c =>
+          c.id === t.category_id ||
+          c.slug === t.category_id ||
+          c.name.toLowerCase() === (t.category || t.category_name || '').toLowerCase()
+        ) || CATEGORIES[0];
+
         return {
           ...t,
           category_id: cat.id,
@@ -109,104 +98,6 @@ export async function getTransactionsData(params: {
   const sortBy = params.sortBy || 'date';
   const sortOrder = params.sortOrder === 'asc' ? 'asc' : 'desc';
 
-  if (pool) {
-    try {
-      let conditions: string[] = ['1=1'];
-      let queryParams: any[] = [];
-      let paramIdx = 1;
-
-      if (params.search) {
-        conditions.push(`(t.merchant_name ILIKE $${paramIdx} OR t.txn_ref ILIKE $${paramIdx} OR t.description ILIKE $${paramIdx})`);
-        queryParams.push(`%${params.search}%`);
-        paramIdx++;
-      }
-      if (params.categoryId && params.categoryId !== 'ALL') {
-        const targetCat = CATEGORIES.find(c => c.id === params.categoryId || c.slug === params.categoryId || c.name.toLowerCase() === params.categoryId.toLowerCase());
-        if (targetCat) {
-          conditions.push(`(t.category_id = $${paramIdx} OR t.category_id = $${paramIdx+1} OR c.name ILIKE $${paramIdx+2})`);
-          queryParams.push(targetCat.id, targetCat.slug, `%${targetCat.name}%`);
-          paramIdx += 3;
-        } else {
-          conditions.push(`t.category_id = $${paramIdx}`);
-          queryParams.push(params.categoryId);
-          paramIdx++;
-        }
-      }
-      if (params.status && params.status !== 'ALL') {
-        conditions.push(`t.status = $${paramIdx}`);
-        queryParams.push(params.status);
-        paramIdx++;
-      }
-      if (params.minAmount !== undefined && !isNaN(params.minAmount)) {
-        conditions.push(`t.amount_inr >= $${paramIdx}`);
-        queryParams.push(params.minAmount);
-        paramIdx++;
-      }
-      if (params.maxAmount !== undefined && !isNaN(params.maxAmount)) {
-        conditions.push(`t.amount_inr <= $${paramIdx}`);
-        queryParams.push(params.maxAmount);
-        paramIdx++;
-      }
-      if (params.startDate) {
-        conditions.push(`t.transaction_date >= $${paramIdx}`);
-        queryParams.push(params.startDate);
-        paramIdx++;
-      }
-      if (params.endDate) {
-        conditions.push(`t.transaction_date <= $${paramIdx}`);
-        queryParams.push(params.endDate + 'T23:59:59');
-        paramIdx++;
-      }
-
-      const whereClause = conditions.join(' AND ');
-      const countRes = await pool.query(`SELECT COUNT(*) as total, SUM(amount_inr) as sum_amt FROM transactions t LEFT JOIN categories c ON t.category_id = c.id WHERE ${whereClause}`, queryParams);
-
-      const totalCount = parseInt(countRes.rows[0]?.total || '0', 10);
-      const totalAmount = parseFloat(countRes.rows[0]?.sum_amt || '0');
-
-      let orderColumn = 't.transaction_date';
-      if (sortBy === 'amount') orderColumn = 't.amount_inr';
-      else if (sortBy === 'merchant') orderColumn = 't.merchant_name';
-
-      const offset = (page - 1) * pageSize;
-      const dataRes = await pool.query(
-        `SELECT t.id, t.user_id, t.txn_ref, t.merchant_name, t.category_id, c.name as category_name, c.color as category_color, c.icon as category_icon, t.amount_inr, t.status, t.transaction_date as date, t.payment_method, t.card_last4, t.reward_coins_earned, t.location, t.description
-         FROM transactions t
-         LEFT JOIN categories c ON t.category_id = c.id
-         WHERE ${whereClause}
-         ORDER BY ${orderColumn} ${sortOrder.toUpperCase()}
-         LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
-        [...queryParams, pageSize, offset]
-      );
-
-      const items = dataRes.rows.map(row => {
-        const cat = CATEGORIES.find(c => c.id === row.category_id || c.slug === row.category_id || c.name.toLowerCase() === (row.category_name || '').toLowerCase()) || CATEGORIES[0];
-        return {
-          ...row,
-          category_id: cat.id,
-          category_name: cat.name,
-          category_color: cat.color,
-          category_icon: cat.icon,
-          amount_inr: parseFloat(row.amount_inr),
-          reward_coins_earned: parseInt(row.reward_coins_earned || '0', 10)
-        };
-      });
-
-      if (totalCount >= 1000) {
-        return {
-          items,
-          total_count: totalCount,
-          page,
-          page_size: pageSize,
-          total_pages: Math.ceil(totalCount / pageSize) || 1,
-          total_amount_inr: Math.round(totalAmount * 100) / 100
-        };
-      }
-    } catch (dbErr) {
-      console.warn('Neon Postgres query error, falling back to embedded data:', dbErr);
-    }
-  }
-
   let filtered = allTransactions.filter(t => {
     if (params.search) {
       const q = params.search.toLowerCase();
@@ -216,7 +107,11 @@ export async function getTransactionsData(params: {
       if (!matchMerchant && !matchRef && !matchDesc) return false;
     }
     if (params.categoryId && params.categoryId !== 'ALL') {
-      const targetCat = CATEGORIES.find(c => c.id === params.categoryId || c.slug === params.categoryId || c.name.toLowerCase() === params.categoryId.toLowerCase());
+      const targetCat = CATEGORIES.find(c =>
+        c.id === params.categoryId ||
+        c.slug === params.categoryId ||
+        c.name.toLowerCase() === params.categoryId.toLowerCase()
+      );
       if (targetCat) {
         const isMatch = t.category_id === targetCat.id ||
                         t.category_id === targetCat.slug ||
