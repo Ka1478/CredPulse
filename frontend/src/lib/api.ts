@@ -9,13 +9,12 @@ import {
 } from './types';
 
 function getApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    return '/api/v1';
+  }
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (envUrl) {
-    const trimmed = envUrl.trim().replace(/\/+$/, '');
-    if (typeof window !== 'undefined' && (trimmed.includes('localhost') || trimmed.includes('127.0.0.1') || !trimmed.startsWith('http'))) {
-      return '/api/v1';
-    }
-    return trimmed;
+  if (envUrl && envUrl.startsWith('http') && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+    return envUrl.trim().replace(/\/+$/, '');
   }
   return '/api/v1';
 }

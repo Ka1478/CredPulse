@@ -55,24 +55,35 @@ if (dbUrl && !dbUrl.includes('localhost') && !dbUrl.includes('127.0.0.1')) {
     pool = new Pool({
       connectionString: dbUrl,
       ssl: { rejectUnauthorized: false },
-      connectionTimeoutMillis: 5000
+      connectionTimeoutMillis: 3000
     });
   } catch (err) {
-    console.warn('Failed to initialize Neon Postgres pool, falling back to embedded data:', err);
+    console.warn('Neon Postgres init error:', err);
   }
 }
 
-const allTransactions: RawTransaction[] = (transactionsData as any[]).map(t => {
-  const cat = CATEGORIES.find(c => c.id === t.category_id) || CATEGORIES[0];
-  return {
-    ...t,
-    category_name: cat.name,
-    category_color: cat.color,
-    category_icon: cat.icon,
-    amount_inr: Number(t.amount_inr),
-    reward_coins_earned: Number(t.reward_coins_earned || Math.floor(t.amount_inr / 100))
-  };
-});
+function getBaseTransactions(): RawTransaction[] {
+  try {
+    if (Array.isArray(transactionsData) && transactionsData.length > 0) {
+      return (transactionsData as any[]).map(t => {
+        const cat = CATEGORIES.find(c => c.id === t.category_id) || CATEGORIES[0];
+        return {
+          ...t,
+          category_name: cat.name,
+          category_color: cat.color,
+          category_icon: cat.icon,
+          amount_inr: Number(t.amount_inr),
+          reward_coins_earned: Number(t.reward_coins_earned || Math.floor(Number(t.amount_inr) / 100))
+        };
+      });
+    }
+  } catch (e) {
+    console.warn('JSON transactions load error:', e);
+  }
+  return [];
+}
+
+const allTransactions: RawTransaction[] = getBaseTransactions();
 
 export function getCategoriesData() {
   return CATEGORIES;
@@ -96,7 +107,6 @@ export async function getTransactionsData(params: {
   const sortBy = params.sortBy || 'date';
   const sortOrder = params.sortOrder === 'asc' ? 'asc' : 'desc';
 
-  // Attempt Neon Postgres query if pool exists
   if (pool) {
     try {
       let conditions: string[] = ['1=1'];
@@ -175,11 +185,10 @@ export async function getTransactionsData(params: {
         total_amount_inr: Math.round(totalAmount * 100) / 100
       };
     } catch (dbErr) {
-      console.warn('Neon Postgres query error, falling back to embedded JSON data:', dbErr);
+      console.warn('Neon Postgres query error, falling back to embedded data:', dbErr);
     }
   }
 
-  // Fallback to embedded 10,000 JSON transactions
   let filtered = allTransactions.filter(t => {
     if (params.search) {
       const q = params.search.toLowerCase();
