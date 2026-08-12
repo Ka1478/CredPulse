@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAnalyticsSummaryData } from '@/lib/db-server';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -24,5 +26,11 @@ export async function GET(request: NextRequest) {
     endDate
   });
 
-  return NextResponse.json(data);
+  return NextResponse.json(data, {
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+      'CDN-Cache-Control': 'no-store',
+      'Vercel-CDN-Cache-Control': 'no-store'
+    }
+  });
 }
