@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import transactionsData from '../data/transactions.json';
+import { transactionsData } from '../data/transactions-dataset';
 
 export interface RawTransaction {
   id: string;
