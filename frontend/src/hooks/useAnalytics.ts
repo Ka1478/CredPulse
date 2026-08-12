@@ -125,7 +125,7 @@ export function useAnalytics(filters: TransactionFilters) {
     setError(null);
     try {
       const res = await fetchAnalyticsSummary(filters);
-      if (res && Array.isArray(res.category_breakdown) && res.category_breakdown.length > 0 && res.total_transactions > 100) {
+      if (res && Array.isArray(res.category_breakdown)) {
         setAnalytics(res);
       } else {
         const clientData = computeClientAnalytics(filters);

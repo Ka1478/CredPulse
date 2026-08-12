@@ -146,7 +146,7 @@ export function useTransactions() {
     setError(null);
     try {
       const res = await fetchTransactions(filters);
-      if (res && Array.isArray(res.items) && res.total_count > 100) {
+      if (res && Array.isArray(res.items)) {
         setData(res);
       } else {
         const clientData = computeClientTransactions(filters);
