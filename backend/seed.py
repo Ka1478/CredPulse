@@ -7,11 +7,14 @@ import psycopg
 from datetime import datetime, timedelta, timezone
 
 # Database configuration defaults
+DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")
+
 DB_USER = os.getenv("POSTGRES_USER", "postgres")
 DB_PASS = os.getenv("POSTGRES_PASSWORD", "postgres")
 DB_HOST = os.getenv("POSTGRES_HOST", "localhost")
 DB_PORT = os.getenv("POSTGRES_PORT", "5432")
 DB_NAME = os.getenv("POSTGRES_DB", "credpulse_db")
+DB_SSLMODE = os.getenv("POSTGRES_SSLMODE", "require" if "neon.tech" in DB_HOST else "disable")
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TRANSACTIONS_JSON_PATH = os.path.join(ROOT_DIR, "transactions.json")
@@ -162,54 +165,53 @@ REWARDS_CATALOGUE = [
 PAYMENT_METHODS = ["HDFC Regalia Gold", "ICICI Sapphiro", "Axis Bank Atlas", "SBI Cashback Card", "Amex Platinum", "UPI AutoPay"]
 LOCATIONS = ["Mumbai", "Bengaluru", "Delhi NCR", "Hyderabad", "Pune", "Chennai", "Kolkata", "Ahmedabad", "Online"]
 
+def get_connection():
+    if DATABASE_URL:
+        url = DATABASE_URL
+        if "sslmode=" not in url and ("neon.tech" in url or "render.com" in url or "railway" in url):
+            url += "?sslmode=require" if "?" not in url else "&sslmode=require"
+        return psycopg.connect(url, autocommit=True)
+    
+    conn_params = {
+        "dbname": DB_NAME,
+        "user": DB_USER,
+        "password": DB_PASS,
+        "host": DB_HOST,
+        "port": DB_PORT,
+        "autocommit": True
+    }
+    if "neon.tech" in DB_HOST or DB_SSLMODE == "require":
+        conn_params["sslmode"] = "require"
+    
+    return psycopg.connect(**conn_params)
+
 def main():
     print("=== CredPulse Database Seed Script ===")
-    print(f"Connecting to PostgreSQL at {DB_HOST}:{DB_PORT} as '{DB_USER}'...")
 
-    # 1. Ensure target DB exists
+    # 1. Connect to database
     try:
-        sys_conn = psycopg.connect(
-            dbname="postgres",
-            user=DB_USER,
-            password=DB_PASS,
-            host=DB_HOST,
-            port=DB_PORT,
-            autocommit=True
-        )
-        sys_cur = sys_conn.cursor()
-        sys_cur.execute(f"SELECT 1 FROM pg_database WHERE datname='{DB_NAME}';")
-        if not sys_cur.fetchone():
-            sys_cur.execute(f"CREATE DATABASE {DB_NAME};")
-            print(f"Created database '{DB_NAME}'")
-        sys_conn.close()
+        conn = get_connection()
+        print("Connected to PostgreSQL successfully!")
     except Exception as e:
-        print(f"Warning on system DB connection: {e}")
+        print(f"Error connecting to PostgreSQL: {e}")
+        sys.exit(1)
 
-    # 2. Connect to credpulse_db
-    conn = psycopg.connect(
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASS,
-        host=DB_HOST,
-        port=DB_PORT,
-        autocommit=True
-    )
     cur = conn.cursor()
 
-    # 3. Read and execute schema.sql DDL
+    # 2. Read and execute schema.sql DDL
     print("Executing schema.sql DDL...")
     with open(SCHEMA_SQL_PATH, "r", encoding="utf-8") as f:
         ddl = f.read()
     cur.execute(ddl)
 
-    # 4. Insert Demo User
+    # 3. Insert Demo User
     print("Seeding default user...")
     cur.execute(
         "INSERT INTO users (id, name, email, coin_balance, total_spent_inr) VALUES (%s, %s, %s, %s, %s);",
         (DEMO_USER_ID, "Priya Anand", "priya@example.com", 0, 0.00)
     )
 
-    # 5. Insert Categories
+    # 4. Insert Categories
     print("Seeding transaction categories...")
     for cat in CATEGORIES:
         cur.execute(
@@ -217,7 +219,7 @@ def main():
             (cat["id"], cat["name"], cat["slug"], cat["icon"], cat["color"])
         )
 
-    # 6. Insert Rewards Catalogue
+    # 5. Insert Rewards Catalogue
     print("Seeding rewards catalogue...")
     for r in REWARDS_CATALOGUE:
         cur.execute(
@@ -225,7 +227,7 @@ def main():
             (r["id"], r["title"], r["description"], r["category"], r["coin_cost"], r["value_inr"], r["partner_name"], r["stock"], r["is_active"])
         )
 
-    # 7. Generate 10,000 Transactions
+    # 6. Generate 10,000 Transactions
     print("Generating 10,000 realistic credit card transactions...")
     random.seed(42)
     start_date = datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
@@ -246,7 +248,6 @@ def main():
         amount = round(random.uniform(min_p, max_p), 2)
         status = random.choice(statuses)
         
-        # 1 coin per ₹100 spent on SUCCESS payments (max 500 coins per txn)
         if status == "SUCCESS":
             coins = min(500, int(amount // 100))
             total_coins_earned += coins
@@ -254,7 +255,6 @@ def main():
         else:
             coins = 0
 
-        # Random timestamp
         random_secs = random.randint(0, date_range_seconds)
         txn_date = start_date + timedelta(seconds=random_secs)
         
@@ -282,7 +282,6 @@ def main():
         )
         transactions_list.append(txn_record)
 
-    # Bulk insert into PostgreSQL using executemany / copy
     print("Executing bulk insertion of 10,000 transactions into PostgreSQL...")
     insert_sql = """
     INSERT INTO transactions (
@@ -292,7 +291,6 @@ def main():
     """
     cur.executemany(insert_sql, transactions_list)
 
-    # 8. Update user balance
     print(f"Updating user balance: {total_coins_earned} CredCoins earned, Total Spent INR {total_spent_inr:,.2f}...")
     cur.execute(
         "UPDATE users SET coin_balance = %s, total_spent_inr = %s WHERE id = %s;",
@@ -301,7 +299,6 @@ def main():
 
     conn.close()
 
-    # 9. Write out transactions.json file to root directory
     print(f"Exporting raw 10,000 transactions to '{TRANSACTIONS_JSON_PATH}'...")
     json_data = []
     cat_map = {c["id"]: c["name"] for c in CATEGORIES}
