@@ -21,13 +21,14 @@ export interface RawTransaction {
 }
 
 const CATEGORIES = [
-  { id: 'cat_dining', name: 'Food & Dining', slug: 'food-dining', icon: 'UtensilsCrossed', color: '#FF6B6B' },
-  { id: 'cat_shopping', name: 'Shopping', slug: 'shopping', icon: 'ShoppingBag', color: '#4ECDC4' },
-  { id: 'cat_travel', name: 'Travel & Fuel', slug: 'travel-fuel', icon: 'Plane', color: '#45B7D1' },
-  { id: 'cat_utilities', name: 'Bills & Utilities', slug: 'bills-utilities', icon: 'Zap', color: '#96CEB4' },
-  { id: 'cat_entertainment', name: 'Entertainment', slug: 'entertainment', icon: 'Film', color: '#FFEEAD' },
-  { id: 'cat_health', name: 'Health & Wellness', slug: 'health-wellness', icon: 'HeartPulse', color: '#D4A5A5' },
-  { id: 'cat_groceries', name: 'Groceries & Essentials', slug: 'groceries-essentials', icon: 'ShoppingCart', color: '#9E579D' }
+  { id: 'cat-1', name: 'Food & Dining', slug: 'food-dining', icon: 'UtensilsCrossed', color: '#F59E0B' },
+  { id: 'cat-2', name: 'Shopping', slug: 'shopping', icon: 'ShoppingBag', color: '#EC4899' },
+  { id: 'cat-3', name: 'Travel & Transit', slug: 'travel', icon: 'Plane', color: '#3B82F6' },
+  { id: 'cat-4', name: 'Bills & Utilities', slug: 'bills-utilities', icon: 'Zap', color: '#10B981' },
+  { id: 'cat-5', name: 'Entertainment', slug: 'entertainment', icon: 'Film', color: '#8B5CF6' },
+  { id: 'cat-6', name: 'Fuel & Transport', slug: 'fuel', icon: 'Fuel', color: '#EF4444' },
+  { id: 'cat-7', name: 'Electronics & Tech', slug: 'electronics', icon: 'Laptop', color: '#6366F1' },
+  { id: 'cat-8', name: 'Health & Grocery', slug: 'health-grocery', icon: 'HeartPulse', color: '#14B8A6' }
 ];
 
 const REWARDS = [
