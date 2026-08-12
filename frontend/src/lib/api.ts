@@ -8,11 +8,15 @@ import {
   Category
 } from './types';
 
-let rawBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1').trim().replace(/\/+$/, '');
-if (!rawBase.includes('/api/')) {
-  rawBase += '/api/v1';
+function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/+$/, '');
+  }
+  return '/api/v1';
 }
-const API_BASE_URL = rawBase;
+
+const API_BASE_URL = getApiBaseUrl();
+
 
 export async function fetchTransactions(filters: TransactionFilters): Promise<PaginatedTransactionsResponse> {
   const params = new URLSearchParams();
