@@ -8,7 +8,11 @@ import {
   Category
 } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+let rawBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1').trim().replace(/\/+$/, '');
+if (!rawBase.includes('/api/')) {
+  rawBase += '/api/v1';
+}
+const API_BASE_URL = rawBase;
 
 export async function fetchTransactions(filters: TransactionFilters): Promise<PaginatedTransactionsResponse> {
   const params = new URLSearchParams();
