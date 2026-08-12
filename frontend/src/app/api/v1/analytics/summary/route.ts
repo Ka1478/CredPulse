@@ -26,7 +26,10 @@ export async function GET(request: NextRequest) {
     endDate
   });
 
-  return NextResponse.json(data, {
+  return NextResponse.json({
+    ...data,
+    service_version: 'nextjs_v2'
+  }, {
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
       'CDN-Cache-Control': 'no-store',
