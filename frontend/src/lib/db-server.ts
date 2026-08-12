@@ -104,7 +104,7 @@ export async function getTransactionsData(params: {
   sortOrder?: string;
 }) {
   const page = Math.max(1, params.page || 1);
-  const pageSize = Math.min(100, Math.max(1, params.pageSize || 20));
+  const pageSize = Math.min(10000, Math.max(1, params.pageSize || 20));
   const sortBy = params.sortBy || 'date';
   const sortOrder = params.sortOrder === 'asc' ? 'asc' : 'desc';
 
