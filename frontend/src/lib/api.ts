@@ -8,12 +8,6 @@ import {
   Category
 } from './types';
 
-function getApiBaseUrl(): string {
-  return '/api/v1';
-}
-
-const API_BASE_URL = getApiBaseUrl();
-
 export async function fetchTransactions(filters: TransactionFilters): Promise<PaginatedTransactionsResponse> {
   const params = new URLSearchParams();
   params.set('page', filters.page.toString());
@@ -29,7 +23,7 @@ export async function fetchTransactions(filters: TransactionFilters): Promise<Pa
   if (filters.startDate) params.set('start_date', filters.startDate);
   if (filters.endDate) params.set('end_date', filters.endDate);
 
-  const res = await fetch(`${API_BASE_URL}/transactions?${params.toString()}`);
+  const res = await fetch(`/api/v1/transactions?${params.toString()}`);
   if (!res.ok) {
     throw new Error(`Failed to fetch transactions (${res.status})`);
   }
@@ -37,7 +31,7 @@ export async function fetchTransactions(filters: TransactionFilters): Promise<Pa
 }
 
 export async function fetchCategories(): Promise<Category[]> {
-  const res = await fetch(`${API_BASE_URL}/transactions/categories`);
+  const res = await fetch(`/api/v1/transactions/categories`);
   if (!res.ok) {
     throw new Error(`Failed to fetch categories (${res.status})`);
   }
@@ -54,7 +48,7 @@ export async function fetchAnalyticsSummary(filters: TransactionFilters): Promis
   if (filters.startDate) params.set('start_date', filters.startDate);
   if (filters.endDate) params.set('end_date', filters.endDate);
 
-  const res = await fetch(`${API_BASE_URL}/analytics/summary?${params.toString()}`);
+  const res = await fetch(`/api/v1/analytics/summary?${params.toString()}`);
   if (!res.ok) {
     throw new Error(`Failed to fetch analytics summary (${res.status})`);
   }
@@ -62,7 +56,7 @@ export async function fetchAnalyticsSummary(filters: TransactionFilters): Promis
 }
 
 export async function fetchCoinBalance(): Promise<CoinBalance> {
-  const res = await fetch(`${API_BASE_URL}/rewards/balance`);
+  const res = await fetch(`/api/v1/rewards/balance`);
   if (!res.ok) {
     throw new Error(`Failed to fetch coin balance (${res.status})`);
   }
@@ -70,7 +64,7 @@ export async function fetchCoinBalance(): Promise<CoinBalance> {
 }
 
 export async function fetchRewardsCatalogue(): Promise<RewardItem[]> {
-  const res = await fetch(`${API_BASE_URL}/rewards/catalogue`);
+  const res = await fetch(`/api/v1/rewards/catalogue`);
   if (!res.ok) {
     throw new Error(`Failed to fetch rewards catalogue (${res.status})`);
   }
@@ -78,7 +72,7 @@ export async function fetchRewardsCatalogue(): Promise<RewardItem[]> {
 }
 
 export async function redeemVoucher(rewardId: string): Promise<RedemptionResponse> {
-  const res = await fetch(`${API_BASE_URL}/rewards/redeem`, {
+  const res = await fetch(`/api/v1/rewards/redeem`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ reward_id: rewardId })
