@@ -20,14 +20,14 @@ export interface RawTransaction {
 }
 
 const CATEGORIES = [
-  { id: 'cat-1', name: 'Food & Dining', slug: 'food-dining', icon: 'UtensilsCrossed', color: '#F59E0B' },
-  { id: 'cat-2', name: 'Shopping', slug: 'shopping', icon: 'ShoppingBag', color: '#EC4899' },
-  { id: 'cat-3', name: 'Travel & Transit', slug: 'travel', icon: 'Plane', color: '#3B82F6' },
-  { id: 'cat-4', name: 'Bills & Utilities', slug: 'bills-utilities', icon: 'Zap', color: '#10B981' },
-  { id: 'cat-5', name: 'Entertainment', slug: 'entertainment', icon: 'Film', color: '#8B5CF6' },
-  { id: 'cat-6', name: 'Fuel & Transport', slug: 'fuel', icon: 'Fuel', color: '#EF4444' },
-  { id: 'cat-7', name: 'Electronics & Tech', slug: 'electronics', icon: 'Laptop', color: '#6366F1' },
-  { id: 'cat-8', name: 'Health & Grocery', slug: 'health-grocery', icon: 'HeartPulse', color: '#14B8A6' }
+  { id: 'cat-1', aliases: ['cat_dining', 'cat-1', 'food-dining'], name: 'Food & Dining', slug: 'food-dining', icon: 'UtensilsCrossed', color: '#F59E0B' },
+  { id: 'cat-2', aliases: ['cat_shopping', 'cat-2', 'shopping'], name: 'Shopping', slug: 'shopping', icon: 'ShoppingBag', color: '#EC4899' },
+  { id: 'cat-3', aliases: ['cat_travel', 'cat-3', 'travel-fuel', 'travel'], name: 'Travel & Transit', slug: 'travel', icon: 'Plane', color: '#3B82F6' },
+  { id: 'cat-4', aliases: ['cat_utilities', 'cat-4', 'bills-utilities'], name: 'Bills & Utilities', slug: 'bills-utilities', icon: 'Zap', color: '#10B981' },
+  { id: 'cat-5', aliases: ['cat_entertainment', 'cat-5', 'entertainment'], name: 'Entertainment', slug: 'entertainment', icon: 'Film', color: '#8B5CF6' },
+  { id: 'cat-6', aliases: ['cat_fuel', 'cat-6', 'fuel'], name: 'Fuel & Transport', slug: 'fuel', icon: 'Fuel', color: '#EF4444' },
+  { id: 'cat-7', aliases: ['cat_electronics', 'cat-7', 'electronics'], name: 'Electronics & Tech', slug: 'electronics', icon: 'Laptop', color: '#6366F1' },
+  { id: 'cat-8', aliases: ['cat_health', 'cat_groceries', 'cat-8', 'health-grocery', 'health-wellness'], name: 'Health & Grocery', slug: 'health-grocery', icon: 'HeartPulse', color: '#14B8A6' }
 ];
 
 const REWARDS = [
@@ -47,16 +47,22 @@ let userState = {
   user_email: 'priya@example.com'
 };
 
+function findCategory(query?: string) {
+  if (!query) return CATEGORIES[0];
+  const q = query.toLowerCase().trim();
+  return CATEGORIES.find(c =>
+    c.id.toLowerCase() === q ||
+    c.aliases.some(a => a.toLowerCase() === q) ||
+    c.name.toLowerCase() === q ||
+    c.slug.toLowerCase() === q
+  ) || CATEGORIES[0];
+}
+
 function getBaseTransactions(): RawTransaction[] {
   try {
     if (Array.isArray(transactionsData) && transactionsData.length > 0) {
       return (transactionsData as any[]).map(t => {
-        const cat = CATEGORIES.find(c =>
-          c.id === t.category_id ||
-          c.slug === t.category_id ||
-          c.name.toLowerCase() === (t.category || t.category_name || '').toLowerCase()
-        ) || CATEGORIES[0];
-
+        const cat = findCategory(t.category_id || t.category || t.category_name);
         return {
           ...t,
           category_id: cat.id,
@@ -107,20 +113,11 @@ export async function getTransactionsData(params: {
       if (!matchMerchant && !matchRef && !matchDesc) return false;
     }
     if (params.categoryId && params.categoryId !== 'ALL') {
-      const targetCat = CATEGORIES.find(c =>
-        c.id === params.categoryId ||
-        c.slug === params.categoryId ||
-        c.name.toLowerCase() === params.categoryId.toLowerCase()
-      );
-      if (targetCat) {
-        const isMatch = t.category_id === targetCat.id ||
-                        t.category_id === targetCat.slug ||
-                        (t.category_name && t.category_name.toLowerCase() === targetCat.name.toLowerCase()) ||
-                        ((t as any).category && (t as any).category.toLowerCase() === targetCat.name.toLowerCase());
-        if (!isMatch) return false;
-      } else if (t.category_id !== params.categoryId) {
-        return false;
-      }
+      const targetCat = findCategory(params.categoryId);
+      const isMatch = t.category_id === targetCat.id ||
+                      targetCat.aliases.includes(t.category_id) ||
+                      targetCat.name.toLowerCase() === (t.category_name || (t as any).category || '').toLowerCase();
+      if (!isMatch) return false;
     }
     if (params.status && params.status !== 'ALL' && t.status !== params.status) {
       return false;
@@ -185,12 +182,7 @@ export async function getAnalyticsSummaryData(params: {
 
   const categoryMap: Record<string, { amount: number; count: number }> = {};
   filtered.forEach(t => {
-    const matchedCat = CATEGORIES.find(c =>
-      c.id === t.category_id ||
-      c.slug === t.category_id ||
-      c.name.toLowerCase() === (t.category_name || (t as any).category || '').toLowerCase()
-    ) || CATEGORIES[0];
-
+    const matchedCat = findCategory(t.category_id || (t as any).category || t.category_name);
     const catId = matchedCat.id;
     if (!categoryMap[catId]) {
       categoryMap[catId] = { amount: 0, count: 0 };
