@@ -67,9 +67,10 @@ function getBaseTransactions(): RawTransaction[] {
   try {
     if (Array.isArray(transactionsData) && transactionsData.length > 0) {
       return (transactionsData as any[]).map(t => {
-        const cat = CATEGORIES.find(c => c.id === t.category_id) || CATEGORIES[0];
+        const cat = CATEGORIES.find(c => c.id === t.category_id || c.slug === t.category_id || c.name.toLowerCase() === (t.category || t.category_name || '').toLowerCase()) || CATEGORIES[0];
         return {
           ...t,
+          category_id: cat.id,
           category_name: cat.name,
           category_color: cat.color,
           category_icon: cat.icon,
@@ -120,9 +121,16 @@ export async function getTransactionsData(params: {
         paramIdx++;
       }
       if (params.categoryId && params.categoryId !== 'ALL') {
-        conditions.push(`t.category_id = $${paramIdx}`);
-        queryParams.push(params.categoryId);
-        paramIdx++;
+        const targetCat = CATEGORIES.find(c => c.id === params.categoryId || c.slug === params.categoryId || c.name.toLowerCase() === params.categoryId.toLowerCase());
+        if (targetCat) {
+          conditions.push(`(t.category_id = $${paramIdx} OR t.category_id = $${paramIdx+1} OR c.name ILIKE $${paramIdx+2})`);
+          queryParams.push(targetCat.id, targetCat.slug, `%${targetCat.name}%`);
+          paramIdx += 3;
+        } else {
+          conditions.push(`t.category_id = $${paramIdx}`);
+          queryParams.push(params.categoryId);
+          paramIdx++;
+        }
       }
       if (params.status && params.status !== 'ALL') {
         conditions.push(`t.status = $${paramIdx}`);
@@ -151,7 +159,7 @@ export async function getTransactionsData(params: {
       }
 
       const whereClause = conditions.join(' AND ');
-      const countRes = await pool.query(`SELECT COUNT(*) as total, SUM(amount_inr) as sum_amt FROM transactions t WHERE ${whereClause}`, queryParams);
+      const countRes = await pool.query(`SELECT COUNT(*) as total, SUM(amount_inr) as sum_amt FROM transactions t LEFT JOIN categories c ON t.category_id = c.id WHERE ${whereClause}`, queryParams);
 
       const totalCount = parseInt(countRes.rows[0]?.total || '0', 10);
       const totalAmount = parseFloat(countRes.rows[0]?.sum_amt || '0');
@@ -171,20 +179,29 @@ export async function getTransactionsData(params: {
         [...queryParams, pageSize, offset]
       );
 
-      const items = dataRes.rows.map(row => ({
-        ...row,
-        amount_inr: parseFloat(row.amount_inr),
-        reward_coins_earned: parseInt(row.reward_coins_earned || '0', 10)
-      }));
+      const items = dataRes.rows.map(row => {
+        const cat = CATEGORIES.find(c => c.id === row.category_id || c.slug === row.category_id || c.name.toLowerCase() === (row.category_name || '').toLowerCase()) || CATEGORIES[0];
+        return {
+          ...row,
+          category_id: cat.id,
+          category_name: cat.name,
+          category_color: cat.color,
+          category_icon: cat.icon,
+          amount_inr: parseFloat(row.amount_inr),
+          reward_coins_earned: parseInt(row.reward_coins_earned || '0', 10)
+        };
+      });
 
-      return {
-        items,
-        total_count: totalCount,
-        page,
-        page_size: pageSize,
-        total_pages: Math.ceil(totalCount / pageSize) || 1,
-        total_amount_inr: Math.round(totalAmount * 100) / 100
-      };
+      if (items.length > 0 || totalCount > 0) {
+        return {
+          items,
+          total_count: totalCount,
+          page,
+          page_size: pageSize,
+          total_pages: Math.ceil(totalCount / pageSize) || 1,
+          total_amount_inr: Math.round(totalAmount * 100) / 100
+        };
+      }
     } catch (dbErr) {
       console.warn('Neon Postgres query error, falling back to embedded data:', dbErr);
     }
@@ -198,8 +215,17 @@ export async function getTransactionsData(params: {
       const matchDesc = t.description ? t.description.toLowerCase().includes(q) : false;
       if (!matchMerchant && !matchRef && !matchDesc) return false;
     }
-    if (params.categoryId && params.categoryId !== 'ALL' && t.category_id !== params.categoryId) {
-      return false;
+    if (params.categoryId && params.categoryId !== 'ALL') {
+      const targetCat = CATEGORIES.find(c => c.id === params.categoryId || c.slug === params.categoryId || c.name.toLowerCase() === params.categoryId.toLowerCase());
+      if (targetCat) {
+        const isMatch = t.category_id === targetCat.id ||
+                        t.category_id === targetCat.slug ||
+                        (t.category_name && t.category_name.toLowerCase() === targetCat.name.toLowerCase()) ||
+                        ((t as any).category && (t as any).category.toLowerCase() === targetCat.name.toLowerCase());
+        if (!isMatch) return false;
+      } else if (t.category_id !== params.categoryId) {
+        return false;
+      }
     }
     if (params.status && params.status !== 'ALL' && t.status !== params.status) {
       return false;
@@ -264,11 +290,18 @@ export async function getAnalyticsSummaryData(params: {
 
   const categoryMap: Record<string, { amount: number; count: number }> = {};
   filtered.forEach(t => {
-    if (!categoryMap[t.category_id]) {
-      categoryMap[t.category_id] = { amount: 0, count: 0 };
+    const matchedCat = CATEGORIES.find(c =>
+      c.id === t.category_id ||
+      c.slug === t.category_id ||
+      c.name.toLowerCase() === (t.category_name || (t as any).category || '').toLowerCase()
+    ) || CATEGORIES[0];
+
+    const catId = matchedCat.id;
+    if (!categoryMap[catId]) {
+      categoryMap[catId] = { amount: 0, count: 0 };
     }
-    categoryMap[t.category_id].amount += t.amount_inr;
-    categoryMap[t.category_id].count += 1;
+    categoryMap[catId].amount += t.amount_inr;
+    categoryMap[catId].count += 1;
   });
 
   const categoryBreakdown = CATEGORIES.map(cat => {
