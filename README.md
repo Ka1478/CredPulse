@@ -1,30 +1,28 @@
 # CredPulse - Credit Card Transactions, Spend Analytics & Coin Rewards Dashboard
 
+## 1. What the Project Does
 CredPulse is a full-stack financial dashboard web application for managing credit card bill payments, analyzing spending habits across 10,000+ transactions with server-side pagination and two-way cross-filtering, and redeeming reward coins against a catalogue of partner vouchers with clean failure recovery.
 
 ---
 
-## Live Links
-
-- **GitHub Repository**: [https://github.com/Ka1478/CredPulse.git](https://github.com/Ka1478/CredPulse.git)
+## 2. Live Demo Link
 - **Deployed Frontend (Vercel)**: [https://cred-pulse-frontend-ten.vercel.app/](https://cred-pulse-frontend-ten.vercel.app/)
-- **Deployed Backend API (Render)**: [https://credpulse-backend-te5q.onrender.com](https://credpulse-backend-te5q.onrender.com) (API Docs: [https://credpulse-backend-te5q.onrender.com/docs](https://credpulse-backend-te5q.onrender.com/docs))
+- **Deployed Backend API (Render)**: [https://credpulse-backend-te5q.onrender.com](https://credpulse-backend-te5q.onrender.com)
+- **Backend Swagger API Docs**: [https://credpulse-backend-te5q.onrender.com/docs](https://credpulse-backend-te5q.onrender.com/docs)
+- **Public GitHub Repository**: [https://github.com/Ka1478/CredPulse.git](https://github.com/Ka1478/CredPulse.git)
 
 ---
 
-## Technical Stack
-
-- **Frontend**: React (TypeScript), Next.js (App Router), Vanilla CSS Design System (`tokens.css`), Recharts (Spend Analytics), Lucide Icons.
+## 3. Tech Stack
+- **Frontend**: React 19, Next.js 16 (App Router), TypeScript, Recharts (Analytics Charts), Lucide Icons, Custom Vanilla CSS Tokens (`tokens.css`).
   - **Hand-Built Custom Table**: Built from scratch using native HTML `<table>` elements without UI libraries (No MUI, Ant, Chakra, shadcn, or TanStack Table). Features sticky headers, hover/focus interaction states, loading skeletons, empty/error handling, and responsive layout down to 360px viewport width.
   - **Hand-Built Accessible Modal**: Features keyboard focus trapping (`Tab` / `Shift+Tab`), `Escape` key close listener, backdrop blur, and focus restoration.
-- **Backend**: Python (FastAPI), AsyncSQLAlchemy, Pydantic v2, Pytest test suite.
+- **Backend**: Python 3.10+, FastAPI, AsyncSQLAlchemy, Pydantic v2, Pytest test suite.
 - **Database**: PostgreSQL 17 with normalized DDL schema, foreign key relations, and B-tree / text pattern indexes for sub-15ms server-side queries on 10,000 transactions.
 
 ---
 
-## Features Implemented
-
-### Core Features (100% Completed)
+## 4. Main Features
 - [x] **Transactions Dashboard on 10k Rows**: Server-side paginated data table handling full dataset of 10,000 transactions smoothly.
 - [x] **Multi-Criteria Combinable Filters**: Filter by category, payment status (SUCCESS, PENDING, FAILED), amount range (min/max), and date range.
 - [x] **As-You-Type Search**: Instant search matching merchant names, transaction reference codes, and descriptions.
@@ -39,14 +37,24 @@ CredPulse is a full-stack financial dashboard web application for managing credi
 
 ---
 
-## Local Setup Guide (Under 5 Minutes)
+## 5. Screenshots
+
+![CredPulse Dashboard Overview](public/screenshots/dashboard.png)
+*CredPulse Dashboard displaying Spend Analytics, Multi-Criteria Filters, and Transactions Table*
+
+![Category Filtering & Synchronized Analytics](public/screenshots/filtering.png)
+*Two-way synchronized Spend by Category Donut Chart and filtered Transactions Table*
+
+---
+
+## 6. Setup Instructions (Under 5 Minutes)
 
 ### Prerequisites
 - Node.js v20+ and npm
 - Python 3.10+
 - PostgreSQL 16 or 17 (Running on `localhost:5432` with default superuser `postgres`)
 
-### 1. Database Setup & Seeding (1 Command)
+### Step 1: Database Setup & Seeding (1 Command)
 ```bash
 cd backend
 python -m venv venv
@@ -56,14 +64,14 @@ python -m venv venv
 ```
 > This creates the database `credpulse_db`, executes `schema.sql`, populates 10,000 realistic transactions, calculates reward balances, and exports `transactions.json` to the root directory.
 
-### 2. Start Backend API
+### Step 2: Start Backend API
 ```bash
 cd backend
 .\venv\Scripts\python -m uvicorn app.main:app --reload --port 8000
 ```
 Backend API will run at `http://127.0.0.1:8000` (API Docs at `http://127.0.0.1:8000/docs`).
 
-### 3. Start Frontend App
+### Step 3: Start Frontend App
 ```bash
 cd frontend
 npm install
@@ -71,10 +79,7 @@ npm run dev
 ```
 Open `http://localhost:3000` in your web browser.
 
----
-
-## Running Automated Tests
-
+### Automated Tests
 Run backend unit tests for coin balance and redemption validation:
 ```bash
 cd backend
@@ -83,9 +88,9 @@ cd backend
 
 ---
 
-## Directory Overview
+## 7. Project Structure
 
-```
+```text
 credpulse/
 ├── backend/
 │   ├── app/
@@ -102,6 +107,7 @@ credpulse/
 │   ├── requirements.txt
 │   └── schema.sql                      # PostgreSQL DDL
 ├── frontend/
+│   ├── public/screenshots/             # Dashboard screenshot assets
 │   ├── src/
 │   │   ├── app/                        # Next.js App Router pages & globals.css
 │   │   ├── styles/tokens.css           # Internal Design Tokens (colors, spacing, type, glassmorphism)
@@ -112,6 +118,7 @@ credpulse/
 │   │   │   └── rewards/                # Rewards vault & voucher components
 │   │   ├── hooks/                      # Custom hooks (useTransactions, useAnalytics, useRewards, useFocusTrap)
 │   │   └── lib/                        # API fetcher & TypeScript interfaces
+│   └── README.md
 ├── transactions.json                   # Exported 10,000 transactions dataset
 ├── ASSUMPTIONS.md                      # Product assumptions document
 ├── DECISIONS.md                        # Technical decision log
